@@ -18,9 +18,9 @@ def relu_der(dA, cache):
 
 class NN:
 
-    def __init__(self, layers, rate):
+    def __init__(self, layers, rate=0.1):
         self.parameters = {}
-        self.layers = layers
+        self.layers = np.array(layers)
         self.learn_rate = rate
         self.random_initialization()
 
@@ -37,8 +37,9 @@ class NN:
         linear_cache = (A_prev, W, b)
         A = activation(Z)
         activation_cache = Z
-        assert(A.shape == (W.shape[0], A_prev.shape[1]))
         cache = (linear_cache, activation_cache)
+
+        assert(A.shape == (W.shape[0], A_prev.shape[1]))
         return A, cache
 
     def model_fw(self, X):
@@ -55,14 +56,15 @@ class NN:
         AL, cache = NN.activation_fw(A, self.parameters['W' + str(L)],
                                      self.parameters['b' + str(L)], sigmoid)
         caches.append(cache)
+
         assert(AL.shape == (self.layers[L], X.shape[1]))
         return AL, caches
 
     def compute_cost(self, AL, Y):
         m = Y.shape[1]
-
         cost = (-1 / m) * np.sum(np.sum(
             np.multiply(np.log(AL), Y) + np.multiply(np.log(1 - AL), (1 - Y))))
+
         assert(cost.shape == ())
         return cost
 
@@ -77,7 +79,6 @@ class NN:
         assert (dA_prev.shape == A_prev.shape)
         assert (dW.shape == W.shape)
         assert (db.shape == b.shape)
-
         return dA_prev, dW, db
 
     def activation_bw(dA, cache, activation):
@@ -125,12 +126,43 @@ class NN:
                 cost = self.compute_cost(AL, Y)
                 costs.append(cost)
                 if (not suppress):
-                    print(_, cost, self.learn_rate)
+                    print("Iters: ", _, "Cost: ", cost)
         return costs
 
     def predict(self, X):
         AL, cache = self.model_fw(X)
+        if (len(AL) > 1):
+            return np.argmax(AL)
         return AL
+
+    def calculate_accuraty(self, X_test, Y_test):
+        m = X_test.shape[1]
+        count = 0
+        for i in range(m):
+            prediction = self.predict(X_test[:, i].reshape(X_test.shape[0], 1))
+            if (prediction == Y_test[i]):
+                count += 1
+        return count / m * 100
+
+    def save_state(self, filename):
+        file = open(filename, 'wb')
+        np.array(len(self.layers)).astype(np.uint16).tofile(file)
+        self.layers.astype(np.uint16).tofile(file)
+        for i in range(1, len(self.layers)):
+            self.parameters['W' + str(i)].tofile(file)
+            self.parameters['b' + str(i)].tofile(file)
+
+    def load_state(self, filename):
+        file = open(filename, 'rb')
+        layers = np.fromfile(file, dtype=np.uint16, count=1).squeeze()
+        self.layers = np.fromfile(file, dtype = np.uint16, count=layers)
+        for i in range(1, len(self.layers)):
+            self.parameters['W' + str(i)] = (
+                np.fromfile(file, dtype=np.float64, count=self.layers[i]*self.layers[i-1])\
+                    .reshape(self.layers[i], self.layers[i-1]))
+            self.parameters['b' + str(i)] = (
+                np.fromfile(file, dtype=np.float64, count=self.layers[i])
+                    .reshape(self.layers[i], 1))
 
     def debug(self):
         x = np.array([-1, -0.5, 0, 0.5, 1])
@@ -170,4 +202,10 @@ class NN:
         print("Done!")
         print("Prediction")
         self.predict(np.random.rand(self.layers[0], 1))
+        print("Done!")
+        print("Saving parameters")
+        self.save_state("test.bin")
+        print("Done!")
+        print("Loading parameters")
+        self.load_state("test.bin")
         print("Done!")
