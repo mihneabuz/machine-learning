@@ -126,20 +126,20 @@ class NN:
                 cost = self.compute_cost(AL, Y)
                 costs.append(cost)
                 if (not suppress):
-                    print("Iters: ", _, "Cost: ", cost)
+                    print("Iters:", _, " Cost:", cost)
         return costs
 
     def predict(self, X):
         AL, cache = self.model_fw(X)
         if (len(AL) > 1):
-            return np.argmax(AL)
+            return np.argmax(AL), np.max(AL)
         return AL
 
-    def calculate_accuraty(self, X_test, Y_test):
+    def calculate_accuracy(self, X_test, Y_test):
         m = X_test.shape[1]
         count = 0
         for i in range(m):
-            prediction = self.predict(X_test[:, i].reshape(X_test.shape[0], 1))
+            prediction = self.predict(X_test[:, i].reshape(X_test.shape[0], 1))[0]
             if (prediction == Y_test[i]):
                 count += 1
         return count / m * 100
