@@ -110,8 +110,10 @@ if (choice.lower() == 'y'):
     print("Draw a digit and press enter!")
 while (choice.lower() == 'y'):
     from drawimage import drawImage
-    x_draw = np.array(drawImage()) / 255
-    prediction, chance = nn.predict(x_draw.reshape(1, dims[1]* dims[2]).T)
+    X_draw = np.array(drawImage()) / 255
+    plt.imshow(X_draw)
+    plt.show()
+    prediction, chance = nn.predict(X_draw.reshape(1, dims[1]* dims[2]).T)
     if (chance > 0.75):
         print("That's a {} for sure!\n".format(prediction))
     elif (chance < 0.5):

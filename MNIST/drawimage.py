@@ -5,8 +5,14 @@ SCALE_FACTOR = 24
 SCREEN_WIDTH = IMAGE_SIZE * SCALE_FACTOR
 SCREEN_HEIGHT = IMAGE_SIZE * SCALE_FACTOR
 SCREEN_TITLE = "Draw a digit!"
-BRUSH = [[0, 32, 0], [32, 96, 32], [0, 32, 0]]
-
+#BRUSH = [[2, 12, 2], [12, 32, 12], [2, 12, 2]]
+#BRUSH_SIZE = 3
+BRUSH_SIZE = 5
+BRUSH = [[0,  0,  2,  0, 0],
+         [0,  2, 12,  2, 0],
+         [2, 12, 30, 12, 2],
+         [0,  2, 12,  2, 0],
+         [0,  0,  2,  0, 0]]
 
 image = []
 
@@ -16,7 +22,7 @@ class DrawDigit(arcade.Window):
         super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
         self.tiles = [[0 for j in range(28)] for i in range(28)]
         self.drawing = False
-        self.brush_size = 3
+        self.brush_size = BRUSH_SIZE
         self.brush = BRUSH
     def on_draw(self):
         for i in range(28):
