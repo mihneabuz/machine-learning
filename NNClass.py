@@ -1,20 +1,6 @@
 import numpy as np
 import matplotlib
-
-def sigmoid(Z):
-    return 1 / (1 + np.exp(-Z))
-
-def sigmoid_der(dA, cache):
-    sig = sigmoid(cache)
-    return dA * sig * (1 - sig)
-
-def relu(Z):
-    return np.maximum(Z, 0)
-
-def relu_der(dA, cache):
-    dZ = np.array(dA, copy=True)
-    dZ[cache <= 0] = 0
-    return dZ
+from utils import *
 
 class NN:
 
@@ -23,12 +9,15 @@ class NN:
         self.layers = np.array(layers)
         self.learn_rate = rate
         self.random_initialization()
+        self.normalization_u = 0
+        self.normalization_sigma = 1
 
     def random_initialization(self):
         L = len(self.layers)
         for i in range(1, L):
             self.parameters['W' + str(i)] = (
-                np.random.randn(self.layers[i], self.layers[i - 1]) * 0.01)
+                np.random.randn(self.layers[i], self.layers[i - 1]) *
+                np.sqrt(2 / self.layers[i - 1]))
             self.parameters['b' + str(i)] = (
                 np.random.randn(self.layers[i], 1))
 
@@ -62,8 +51,7 @@ class NN:
 
     def compute_cost(self, AL, Y):
         m = Y.shape[1]
-        cost = (-1 / m) * np.sum(np.sum(
-            np.multiply(np.log(AL), Y) + np.multiply(np.log(1 - AL), (1 - Y))))
+        cost = -(np.multiply(np.log(AL), Y) + np.multiply(np.log(1 - AL), (1 - Y))).sum()/m
 
         assert(cost.shape == ())
         return cost
@@ -94,13 +82,15 @@ class NN:
         L = len(self.layers) - 1
         m = AL.shape[1]
 
+        #AL -= (AL == 1) * np.finfo(np.float64).eps
+        #AL += (AL == 0) * np.finfo(np.float64).eps
         dAL = - (np.divide(Y, AL) - np.divide(1 - Y, 1 - AL))
         grads["dA" + str(L)], grads["dW" + str(L)], grads["db" + str(L)] = (
             NN.activation_bw(dAL, caches[L - 1], sigmoid_der))
 
         for i in reversed(range(L - 1)):
-            grads["dA"+str(i+1)], grads["dW"+str(i+1)], grads["db"+str(i+1)] = (
-                NN.activation_bw(grads["dA" + str(i+2)], caches[i], relu_der))
+            grads["dA"+str(i + 1)], grads["dW"+str(i + 1)], grads["db"+str(i + 1)] = (
+                NN.activation_bw(grads["dA" + str(i + 2)], caches[i], relu_der))
 
         return grads
 
@@ -117,9 +107,15 @@ class NN:
         return s
 
     def learn(self, X, Y, iter=100, suppress=False):
+        self.normalization_u = np.mean(X, axis=1).reshape(X.shape[0], 1)
+        X_norm = X - self.normalization_u
+        self.normalization_sigma = (np.std(X_norm, axis=1).reshape(X.shape[0], 1) +
+                                    np.finfo(np.float64).eps)
+        X_norm /= self.normalization_sigma
+
         costs = []
         for _ in range(iter):
-            AL, cache = self.model_fw(X)
+            AL, cache = self.model_fw(X_norm)
             grads = self.model_bw(AL, Y, cache)
             self.update_params(grads)
             if (not suppress and not _ % 10):
@@ -130,7 +126,10 @@ class NN:
         return costs
 
     def predict(self, X):
-        AL, cache = self.model_fw(X)
+        X_norm = X - self.normalization_u
+        X_norm /= self.normalization_sigma
+
+        AL, cache = self.model_fw(X_norm)
         if (len(AL) > 1):
             return np.argmax(AL), np.max(AL)
         return AL
