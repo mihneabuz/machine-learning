@@ -17,7 +17,7 @@ magic1 = np.fromfile(traindatafile, dtype=np.int32, count=1).byteswap().squeeze(
 assert(magic1 == 2051)
 dims = np.fromfile(traindatafile, dtype=np.int32, count=3, offset=4).byteswap()
 X_train = np.memmap(traindatafile, dtype=np.dtype('>u1'), mode='r',
-                    offset=16).reshape(dims) / 255
+                    offset=16).reshape(dims)
 
 print("Train data:", type(X_train), X_train.shape)
 
@@ -34,6 +34,7 @@ while (choice.lower() == 'y'):
     for i in range(5):
         ex = np.random.randint(0, dims[0])
         print("Example: ", np.argmax(Y_train[ex]))
+        print(X_train[ex])
         plt.imshow(X_train[ex])
         plt.show()
     choice = input("See some more examples? Y/N\n")
@@ -80,7 +81,7 @@ magic1 = np.fromfile(testdatafile, dtype=np.int32, count=1).byteswap().squeeze()
 assert(magic1 == 2051)
 dims = np.fromfile(testdatafile, dtype=np.int32, count=3, offset=4).byteswap()
 X_test = np.memmap(testdatafile, dtype=np.dtype('>u1'), mode='r',
-                    offset=16).reshape(dims) / 255
+                    offset=16).reshape(dims)
 
 magic2 = np.fromfile(testlabelfile, dtype=np.int32, count=1).byteswap().squeeze()
 assert(magic2 == 2049)
@@ -110,7 +111,7 @@ if (choice.lower() == 'y'):
     print("Draw a digit and press enter!")
 while (choice.lower() == 'y'):
     from drawimage import drawImage
-    X_draw = np.array(drawImage()) / 255
+    X_draw = np.array(drawImage())
     plt.imshow(X_draw)
     plt.show()
     prediction, chance = nn.predict(X_draw.reshape(1, dims[1]* dims[2]).T)
