@@ -4,13 +4,15 @@ from utils import *
 
 class NN:
 
-    def __init__(self, layers, rate=0.1):
+    def __init__(self, layers, rate=0.1, lambd=0, drop_chance=0):
         self.parameters = {}
         self.layers = np.array(layers)
         self.learn_rate = rate
         self.random_initialization()
         self.normalization_u = 0
         self.normalization_sigma = 1
+        self.lambd = lambd
+        self.keep_prob = 1 - drop_chance
 
     def random_initialization(self):
         L = len(self.layers)
@@ -19,31 +21,40 @@ class NN:
                 np.random.randn(self.layers[i], self.layers[i - 1]) *
                 np.sqrt(2 / self.layers[i - 1]))
             self.parameters['b' + str(i)] = (
-                np.random.randn(self.layers[i], 1))
+                np.random.randn(self.layers[i], 1) *
+                np.sqrt(2 / self.layers[i - 1]))
 
-    def activation_fw(A_prev, W, b, activation):
+    def activation_fw(self, A_prev, W, b, activation, dropout=True):
         Z = np.dot(W, A_prev) + b
         linear_cache = (A_prev, W, b)
         A = activation(Z)
+
+        if (dropout and self.keep_prob < 1 ):
+            D = np.random.rand(*A.shape) < self.keep_prob
+            A = (A * D) / self.keep_prob
+            linear_cache = (A_prev, W, b)
+        else:
+            D = np.array([0])
+
         activation_cache = Z
-        cache = (linear_cache, activation_cache)
+        cache = (linear_cache, activation_cache, D)
 
         assert(A.shape == (W.shape[0], A_prev.shape[1]))
         return A, cache
 
-    def model_fw(self, X):
+    def model_fw(self, X, dropout=True):
         caches = []
         L = len(self.layers) - 1
         A = X
 
         for i in range(1, L):
             A_prev = A
-            A, cache = NN.activation_fw(A_prev, self.parameters['W' + str(i)],
-                                        self.parameters['b' + str(i)], relu)
+            A, cache = self.activation_fw(A_prev, self.parameters['W' + str(i)],
+                                        self.parameters['b' + str(i)], relu, dropout)
             caches.append(cache)
 
-        AL, cache = NN.activation_fw(A, self.parameters['W' + str(L)],
-                                     self.parameters['b' + str(L)], sigmoid)
+        AL, cache = self.activation_fw(A, self.parameters['W' + str(L)],
+                                     self.parameters['b' + str(L)], sigmoid, False)
         caches.append(cache)
 
         assert(AL.shape == (self.layers[L], X.shape[1]))
@@ -52,15 +63,22 @@ class NN:
     def compute_cost(self, AL, Y):
         m = Y.shape[1]
         cost = -(np.multiply(np.log(AL), Y) + np.multiply(np.log(1 - AL), (1 - Y))).sum()/m
-
+        if (self.lambd):
+            L = len(self.layers)
+            params_sum = 0
+            for i in range(1, L):
+                params_sum += np.sum(np.square(self.parameters["W" + str(i)]))
+            cost += self.lambd / (2 * m) * params_sum
         assert(cost.shape == ())
         return cost
 
-    def linear_bw(dZ, cache):
-        A_prev, W, b = cache
+    def linear_bw(self, dZ, linear_cache):
+        A_prev, W, b = linear_cache
         m = A_prev.shape[1]
 
         dW = np.dot(dZ, A_prev.T) / m
+        if (self.lambd):
+            dW += (self.lambd / m) * W
         db = np.sum(dZ, axis=1, keepdims=True) / m
         dA_prev = np.dot(W.T, dZ)
 
@@ -69,28 +87,28 @@ class NN:
         assert (db.shape == b.shape)
         return dA_prev, dW, db
 
-    def activation_bw(dA, cache, activation):
-        linear_cache, activation_cache = cache
+    def activation_bw(self, dA, cache, activation):
+        linear_cache, activation_cache, D = cache
 
+        if (D.any()):
+            dA = (dA * D) / self.keep_prob
         dZ = activation(dA, activation_cache)
-        dA_prev, dW, db = NN.linear_bw(dZ, linear_cache)
+        dA_prev, dW, db = self.linear_bw(dZ, linear_cache)
 
         return dA_prev, dW, db
 
-    def model_bw(self, AL, Y, caches):
+    def model_bw(self, AL, Y, caches, ):
         grads = {}
         L = len(self.layers) - 1
         m = AL.shape[1]
 
-        #AL -= (AL == 1) * np.finfo(np.float64).eps
-        #AL += (AL == 0) * np.finfo(np.float64).eps
         dAL = - (np.divide(Y, AL) - np.divide(1 - Y, 1 - AL))
         grads["dA" + str(L)], grads["dW" + str(L)], grads["db" + str(L)] = (
-            NN.activation_bw(dAL, caches[L - 1], sigmoid_der))
+            self.activation_bw(dAL, caches[L - 1], sigmoid_der))
 
         for i in reversed(range(L - 1)):
             grads["dA"+str(i + 1)], grads["dW"+str(i + 1)], grads["db"+str(i + 1)] = (
-                NN.activation_bw(grads["dA" + str(i + 2)], caches[i], relu_der))
+                self.activation_bw(grads["dA" + str(i + 2)], caches[i], relu_der))
 
         return grads
 
@@ -129,7 +147,7 @@ class NN:
         X_norm = X - self.normalization_u
         X_norm /= self.normalization_sigma
 
-        AL, cache = self.model_fw(X_norm)
+        AL, cache = self.model_fw(X_norm, dropout=False)
         if (len(AL) > 1):
             return np.argmax(AL), np.max(AL)
         return AL
