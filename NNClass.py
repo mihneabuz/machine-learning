@@ -4,7 +4,7 @@ from utils import *
 
 class NN:
 
-    def __init__(self, layers, rate=0.1, lambd=0, drop_chance=0):
+    def __init__(self, layers, rate=0.1, lambd=0, dropout=0):
         self.parameters = {}
         self.layers = np.array(layers)
         self.learn_rate = rate
@@ -12,7 +12,7 @@ class NN:
         self.normalization_u = 0
         self.normalization_sigma = 1
         self.lambd = lambd
-        self.keep_prob = 1 - drop_chance
+        self.keep_prob = 1 - dropout
 
     def random_initialization(self):
         L = len(self.layers)
@@ -165,6 +165,8 @@ class NN:
         file = open(filename, 'wb')
         np.array(len(self.layers)).astype(np.uint16).tofile(file)
         self.layers.astype(np.uint16).tofile(file)
+        np.array(self.lambd).astype(np.float32).tofile(file)
+        np.array(self.keep_prob).astype(np.float32).tofile(file)
         for i in range(1, len(self.layers)):
             self.parameters['W' + str(i)].tofile(file)
             self.parameters['b' + str(i)].tofile(file)
@@ -173,6 +175,8 @@ class NN:
         file = open(filename, 'rb')
         layers = np.fromfile(file, dtype=np.uint16, count=1).squeeze()
         self.layers = np.fromfile(file, dtype = np.uint16, count=layers)
+        self.lambd = np.fromfile(file, dtype=np.float32, count=1).squeeze()
+        self.keep_prob = np.fromfile(file, dtype=np.float32, count=1).squeeze()
         for i in range(1, len(self.layers)):
             self.parameters['W' + str(i)] = (
                 np.fromfile(file, dtype=np.float64, count=self.layers[i]*self.layers[i-1])\
@@ -180,6 +184,11 @@ class NN:
             self.parameters['b' + str(i)] = (
                 np.fromfile(file, dtype=np.float64, count=self.layers[i])
                     .reshape(self.layers[i], 1))
+
+    def info(self):
+        print("Layers:", self.layers)
+        print("Regularization lambda:", self.lambd)
+        print("Dropout chance:", np.around(1 - self.keep_prob, 2), '\n')
 
     def debug(self):
         x = np.array([-1, -0.5, 0, 0.5, 1])
@@ -221,8 +230,10 @@ class NN:
         self.predict(np.random.rand(self.layers[0], 1))
         print("Done!")
         print("Saving parameters")
+        self.info()
         self.save_state("test.bin")
         print("Done!")
         print("Loading parameters")
         self.load_state("test.bin")
+        self.info()
         print("Done!")

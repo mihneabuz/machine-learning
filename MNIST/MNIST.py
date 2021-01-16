@@ -46,6 +46,7 @@ if (choice.lower() == 'y'):
     param_file = input("File name: ")
     nn.load_state(param_file)
     print("Parameters loaded from " + param_file)
+    nn.info()
 
 choice = input("Train model? Y/N\n")
 if (choice.lower() == 'y'):
@@ -53,8 +54,11 @@ if (choice.lower() == 'y'):
         string = input("Input size of hidden layers:\n")
         hidden_layers = [int(x) for x in string.split()]
         layers = (dims[1] * dims[2], *hidden_layers, 10)
-        print("All layers: ", layers)
-        nn = NN(layers, 0.1)
+        lambd = float(input("Input regularization lambda: "))
+        drop_chance = float(input("Input dropout chance: "))
+        nn = NN(layers, 0.1, lambd, drop_chance)
+        print("Created neural network with:")
+        nn.info()
     learning_rate = float(input("Learning rate: "))
     iters = int(input("Number of iterations: "))
     nn.learn_rate = learning_rate
@@ -96,6 +100,7 @@ if (choice.lower() == 'y'):
     param_file = input("File name: ")
     nn.save_state(param_file)
     print("Parameters saved in " + param_file)
+    nn.info()
 
 choice = input("Try some predictions? Y/N\n")
 while (choice.lower() == 'y'):
@@ -112,8 +117,8 @@ if (choice.lower() == 'y'):
 while (choice.lower() == 'y'):
     from drawimage import drawImage
     X_draw = np.array(drawImage())
-    plt.imshow(X_draw)
-    plt.show()
+    #plt.imshow(X_draw)
+    #plt.show()
     prediction, chance = nn.predict(X_draw.reshape(1, dims[1]* dims[2]).T)
     if (chance > 0.75):
         print("That's a {} for sure!\n".format(prediction))
