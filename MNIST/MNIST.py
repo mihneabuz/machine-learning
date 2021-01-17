@@ -34,7 +34,6 @@ while (choice.lower() == 'y'):
     for i in range(5):
         ex = np.random.randint(0, dims[0])
         print("Example: ", np.argmax(Y_train[ex]))
-        print(X_train[ex])
         plt.imshow(X_train[ex])
         plt.show()
     choice = input("See some more examples? Y/N\n")
@@ -47,9 +46,17 @@ if (choice.lower() == 'y'):
     nn.load_state(param_file)
     print("Parameters loaded from " + param_file)
     nn.info()
+    choice = input("Change hyper-parameters? Y/N\n")
+    if (choice.lower() == 'y'):
+        lambd = float(input("Input regularization lambda: "))
+        drop_chance = float(input("Input dropout chance: "))
+        nn.lambd = lambd
+        nn.keep_prob = 1 - drop_chance
+        nn.info()
 
+costs = []
 choice = input("Train model? Y/N\n")
-if (choice.lower() == 'y'):
+while (choice.lower() == 'y'):
     if (nn == None):
         string = input("Input size of hidden layers:\n")
         hidden_layers = [int(x) for x in string.split()]
@@ -64,13 +71,14 @@ if (choice.lower() == 'y'):
     nn.learn_rate = learning_rate
     print("Training...")
     begin = time()
-    costs = nn.learn(X_train.reshape(dims[0], dims[1] * dims[2]).T, Y_train.T, iter=iters)
+    costs += nn.learn(X_train.reshape(dims[0], dims[1] * dims[2]).T, Y_train.T, iter=iters)
     print("Done!")
     print("Train time: {:.2f} minutes".format((time() - begin) / 60))
 
     print("Showing cost function plot")
     plt.plot(range(len(costs)), costs)
     plt.show()
+    choice = input("Train some more? Y/N\n")
 
 if (nn == None):
     exit()
@@ -117,8 +125,6 @@ if (choice.lower() == 'y'):
 while (choice.lower() == 'y'):
     from drawimage import drawImage
     X_draw = np.array(drawImage())
-    #plt.imshow(X_draw)
-    #plt.show()
     prediction, chance = nn.predict(X_draw.reshape(1, dims[1]* dims[2]).T)
     if (chance > 0.75):
         print("That's a {} for sure!\n".format(prediction))

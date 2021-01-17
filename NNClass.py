@@ -132,15 +132,22 @@ class NN:
         X_norm /= self.normalization_sigma
 
         costs = []
-        for _ in range(iter):
+        AL, cache = self.model_fw(X_norm)
+        grads = self.model_bw(AL, Y, cache)
+        self.update_params(grads)
+        cost = self.compute_cost(AL, Y)
+        costs.append(cost)
+        if (not suppress):
+            print("Iters: ", 0, " Cost:", cost)
+
+        for i in range(1, iter + 1):
             AL, cache = self.model_fw(X_norm)
             grads = self.model_bw(AL, Y, cache)
             self.update_params(grads)
-            if (not suppress and not _ % 10):
+            if (not suppress and not i % 10):
                 cost = self.compute_cost(AL, Y)
                 costs.append(cost)
-                if (not suppress):
-                    print("Iters:", _, " Cost:", cost)
+                print("Iters:", i, " Cost:", cost)
         return costs
 
     def predict(self, X):
@@ -164,9 +171,11 @@ class NN:
     def save_state(self, filename):
         file = open(filename, 'wb')
         np.array(len(self.layers)).astype(np.uint16).tofile(file)
-        self.layers.astype(np.uint16).tofile(file)
+        self.layers.astype(np.uint32).tofile(file)
         np.array(self.lambd).astype(np.float32).tofile(file)
         np.array(self.keep_prob).astype(np.float32).tofile(file)
+        np.array(self.normalization_u).astype(np.float64).tofile(file)
+        np.array(self.normalization_sigma).astype(np.float64).tofile(file)
         for i in range(1, len(self.layers)):
             self.parameters['W' + str(i)].tofile(file)
             self.parameters['b' + str(i)].tofile(file)
@@ -174,12 +183,14 @@ class NN:
     def load_state(self, filename):
         file = open(filename, 'rb')
         layers = np.fromfile(file, dtype=np.uint16, count=1).squeeze()
-        self.layers = np.fromfile(file, dtype = np.uint16, count=layers)
+        self.layers = np.fromfile(file, dtype=np.uint32, count=layers)
         self.lambd = np.fromfile(file, dtype=np.float32, count=1).squeeze()
         self.keep_prob = np.fromfile(file, dtype=np.float32, count=1).squeeze()
+        self.normalization_u = np.fromfile(file, dtype=np.float64, count=self.layers[0])
+        self.normalization_sigma = np.fromfile(file, dtype=np.float64, count=self.layers[0])
         for i in range(1, len(self.layers)):
             self.parameters['W' + str(i)] = (
-                np.fromfile(file, dtype=np.float64, count=self.layers[i]*self.layers[i-1])\
+                np.fromfile(file, dtype=np.float64, count=self.layers[i]*self.layers[i-1])
                     .reshape(self.layers[i], self.layers[i-1]))
             self.parameters['b' + str(i)] = (
                 np.fromfile(file, dtype=np.float64, count=self.layers[i])
