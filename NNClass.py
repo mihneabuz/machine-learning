@@ -186,8 +186,10 @@ class NN:
         self.layers = np.fromfile(file, dtype=np.uint32, count=layers)
         self.lambd = np.fromfile(file, dtype=np.float32, count=1).squeeze()
         self.keep_prob = np.fromfile(file, dtype=np.float32, count=1).squeeze()
-        self.normalization_u = np.fromfile(file, dtype=np.float64, count=self.layers[0])
-        self.normalization_sigma = np.fromfile(file, dtype=np.float64, count=self.layers[0])
+        self.normalization_u = (np.fromfile(file, dtype=np.float64, count=self.layers[0])
+                                .reshape(self.layers[0], 1))
+        self.normalization_sigma = (np.fromfile(file, dtype=np.float64, count=self.layers[0])
+                                    .reshape(self.layers[0], 1))
         for i in range(1, len(self.layers)):
             self.parameters['W' + str(i)] = (
                 np.fromfile(file, dtype=np.float64, count=self.layers[i]*self.layers[i-1])
