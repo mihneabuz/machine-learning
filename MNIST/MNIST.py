@@ -34,7 +34,7 @@ while (choice.lower() == 'y'):
     for i in range(5):
         ex = np.random.randint(0, dims[0])
         print("Example: ", np.argmax(Y_train[ex]))
-        plt.imshow(X_train[ex])
+        plt.imshow(X_train[ex], cmap='gray')
         plt.show()
     choice = input("See some more examples? Y/N\n")
 
@@ -115,7 +115,7 @@ while (choice.lower() == 'y'):
     for i in range(10):
         ex = np.random.randint(0, dims[0])
         print("Prediction: ", nn.predict(X_test[ex].reshape(1, dims[1] * dims[2]).T)[0])
-        plt.imshow(X_test[ex])
+        plt.imshow(X_test[ex], cmap='gray')
         plt.show()
     choice = input("Try some more predictions? Y/N\n")
 
