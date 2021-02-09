@@ -88,10 +88,12 @@ for epoch in range(num_epochs):
     for x, y in train_dl:
         preds = model(x)
         loss = criterion(preds, y)
+
         opt.zero_grad()
         loss.backward()
-        total_loss += loss
         opt.step()
+
+        total_loss += loss
     print("Epoch {}, Loss: {:.4f}".format(epoch + 1, total_loss.item()))
 
 # final loss
