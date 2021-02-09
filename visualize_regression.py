@@ -21,9 +21,13 @@ model = nn.Sequential(
 criterion = nn.MSELoss()
 opt = torch.optim.SGD(model.parameters(), lr=0.012)
 
-fig, axs = plt.subplots(nrows=2, ncols=5, figsize=(16, 8))
+fig, axs = plt.subplots(nrows=2, ncols=6, figsize=(16, 8))
 axs = axs.flatten()
-index = 0
+axs[0].plot(X_train, y_train, 'ro')
+predicted = model(X).detach().numpy()
+axs[1].plot(X_train, y_train, 'ro')
+axs[1].plot(X_train, predicted, 'b')
+index = 2
 
 for epoch in range(100):
     preds = model(X)
