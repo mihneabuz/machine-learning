@@ -3,10 +3,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import torch
+from torch import nn
 from torch.utils.data import TensorDataset, DataLoader, random_split
 from sklearn import preprocessing
-
-test_set_size = 10
+from sklearn.model_selection import train_test_split
+TEST_SET_RATIO = 0.3
+BATCH_SIZE = 32
 
 print("Loading data...")
 columns = ['CRIM', 'ZN', 'INDUS', 'CHAS', 'NOX', 'RM', 'AGE',
@@ -14,32 +16,20 @@ columns = ['CRIM', 'ZN', 'INDUS', 'CHAS', 'NOX', 'RM', 'AGE',
 
 data_set = pd.read_csv("housing.csv", delim_whitespace=True)
 data_set.columns = columns
-print(data_set.head())
-print("...\nEntries:", len(data_set), "\n")
-
-
-# clean up entries with MEDV > 50
-data_set = data_set[data_set["MEDV"] < 50].dropna()
-#data_set = data_set.sample(frac=1).reset_index(drop=True)
 m = len(data_set)
 
+# clean up outlier entries with MEDV > 50
+data_set = data_set[data_set["MEDV"] < 50].dropna()
 
-x = data_set.values
-min_max_scaler = preprocessing.MinMaxScaler()
-x_scaled = min_max_scaler.fit_transform(x)
-data_set = pd.DataFrame(x_scaled, columns=columns)
-data_set.columns = columns
-print(data_set.head())
-print("...\nEntries:", len(data_set), "\n")
-
-# some plots to visualize data
+# dataset visualization
+print("Entries:", len(data_set), "\n")
 print(data_set.describe())
 print("Parameter distributions")
 fig, axs = plt.subplots(ncols=7, nrows=2, figsize=(16, 8))
 index = 0
 axs = axs.flatten()
 for k, v in data_set.items():
-    sns.histplot(v, ax=axs[index])
+    sns.histplot(v, ax=axs[index], kde=True)
     index += 1
 plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=5.0)
 plt.show()
@@ -49,47 +39,61 @@ sns.heatmap(data_set.corr().abs(), annot=True)
 print("Correlation heat-map")
 plt.show()
 
-# removing CHAS from inputs because of low correlation
-inputs = torch.tensor(data_set.drop(columns=["MEDV", "CHAS"]), dtype=torch.float32)
-results = torch.tensor(data_set["MEDV"].values, dtype=torch.float32)
-assert len(inputs) == len(results)
+# mean normalize data
+data_set = data_set.apply(lambda x: (x - x.mean()) / x.std(), axis=0)
 
-# load data in torch data loader
-tensor_dataset = TensorDataset(inputs, results)
-split = (m - test_set_size, test_set_size)
-batch_size = 64
-train_dataset, test_dataset = random_split(tensor_dataset, split)
-train_dl = torch.utils.data.DataLoader(train_dataset, batch_size, shuffle=True)
-test_dl = torch.utils.data.DataLoader(test_dataset, 1, shuffle=True)
+# we're done with pandas -> going back to numpy
+X = data_set.drop(columns=["CHAS", "MEDV"]).to_numpy(dtype=np.float32)
+y = data_set["MEDV"].to_numpy(dtype=np.float32)
+n = X.shape[1]
 
-model = torch.nn.Sequential(
-    torch.nn.Linear(12, 1),
-    torch.nn.Flatten(0, 1)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=TEST_SET_RATIO, shuffle=True)
+
+print("Train set:", X_train.shape[0])
+print("Test set:", X_test.shape[0])
+
+# now going to pytorch tensors
+X_train = torch.from_numpy(X_train)
+X_test = torch.from_numpy(X_test)
+y_train = torch.from_numpy(y_train)
+y_test = torch.from_numpy(y_test)
+assert X_train.dtype == torch.float32
+
+# making the model
+model = nn.Sequential(
+    nn.Linear(n, 1),
+    nn.Flatten(0, 1)
 )
-loss_fn = torch.nn.MSELoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=0.000001)
+nn.init.normal_(model[0].weight, mean=0, std=0.1)
+nn.init.constant_(model[0].bias, val=0)
 
-epochs = 300
-for epoch in range(epochs):
+# making a batch data loader
+train_ds = TensorDataset(X_train, y_train)
+train_dl = DataLoader(train_ds, BATCH_SIZE, shuffle=True)
+
+# loss functionm
+criterion = nn.MSELoss()
+
+# optimizer
+opt = torch.optim.SGD(model.parameters(), lr=0.01)
+
+# initial loss
+print("\nInitial train loss: {:.4f}".format(criterion(model(X_train), y_train)))
+print("Initial test loss: {:.4f}\n".format(criterion(model(X_test), y_test)))
+
+# training
+num_epochs = 10
+for epoch in range(num_epochs):
     total_loss = 0
-    for inputs, results in train_dl:
-        pred = model(inputs)
-        loss = loss_fn(pred, results)
-        total_loss += loss
-
+    for x, y in train_dl:
+        preds = model(x)
+        loss = criterion(preds, y)
+        opt.zero_grad()
         loss.backward()
+        total_loss += loss
+        opt.step()
+    print("Epoch {}, Loss: {:.4f}".format(epoch + 1, total_loss.item()))
 
-        optimizer.step()
-        optimizer.zero_grad()
-
-    if not (epoch + 1) % 10:
-        print("Epoch {}, Loss: {:.4f}".format(epoch + 1, loss.item()))
-
-wtf = 0
-for inputs, target in test_dl:
-        pred = model(inputs)
-        print("got: {:.2f}, expected: {:.2f}, diff: {:.2f}".format(
-            pred.item(), target.item(), abs(pred.item() - target.item())))
-        wtf += 1
-        if wtf == 10:
-            break
+# final loss
+print("\nFinal train loss: {:.4f}".format(criterion(model(X_train), y_train)))
+print("Final test loss: {:.4f}".format(criterion(model(X_test), y_test)))
