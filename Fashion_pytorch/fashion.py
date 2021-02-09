@@ -39,34 +39,3 @@ while (choice.lower() == "y"):
         plt.show()
     choice = input("See some more examples? Y\\N\n")
 
-inputs = torch.tensor(X_train, dtype=torch.float32)
-targets = torch.tensor(Y_train_aux, dtype=torch.long)
-train_ds = TensorDataset(inputs, targets)
-batch_size = 128
-train_dl = DataLoader(train_ds, batch_size, shuffle=True)
-
-model = nn.Sequential(
-    torch.nn.Linear(784, 500),
-    torch.nn.Linear(500, 100),
-    torch.nn.Linear(100, 10)
-)
-criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=0.0001)
-
-for epoch in range(10):
-    total_loss = 0
-    for inputs, targets in train_dl:
-        pred = model(inputs)
-#        print(pred.shape, targets.shape)
-        loss = criterion(pred, targets)
-        total_loss += loss
-
-        loss.backward()
-
-        optimizer.step()
-        optimizer.zero_grad()
-
-    print("Epoch {}, Loss: {:.4f}".format(epoch + 1, total_loss.item()))
-
-
-
