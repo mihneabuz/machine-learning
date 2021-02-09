@@ -33,10 +33,9 @@ for epoch in range(100):
     preds = model(X)
     loss = criterion(preds, y)
 
-    loss.backward()
-
-    opt.step()
     opt.zero_grad()
+    loss.backward()
+    opt.step()
 
     if (epoch + 1) % 10 == 0:
         print("Epoch {}, Loss: {:.4f}".format(epoch + 1, loss.item()))
