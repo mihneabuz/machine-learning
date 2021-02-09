@@ -82,7 +82,7 @@ print("\nInitial train loss: {:.4f}".format(criterion(model(X_train), y_train)))
 print("Initial test loss: {:.4f}\n".format(criterion(model(X_test), y_test)))
 
 # training
-num_epochs = 10
+num_epochs = 20
 for epoch in range(num_epochs):
     total_loss = 0
     for x, y in train_dl:
