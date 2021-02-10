@@ -10,7 +10,6 @@ traindatafile = "train-images-idx3-ubyte"
 trainlabelfile = "train-labels-idx1-ubyte"
 testdatafile = "t10k-images-idx3-ubyte"
 testlabelfile = "t10k-labels-idx1-ubyte"
-DEV_SET_RATION = 0.01
 
 # Loading all data
 print("Loading data...")
@@ -24,10 +23,7 @@ print("Train set:", X.shape)
 
 magic = np.fromfile(trainlabelfile, dtype=np.int32, count=1).byteswap().squeeze()
 assert magic == 2049
-Y_aux = np.fromfile(trainlabelfile, dtype=np.dtype('>u1'), count=dims[0], offset=8)
-Y = np.zeros((dims[0], 10))
-for i in range(dims[0]):
-    Y[i, Y_aux[i] % 10] = 1
+Y = np.fromfile(trainlabelfile, dtype=np.dtype('>u1'), count=dims[0], offset=8)
 print("Train labels:", Y.shape)
 
 magic = np.fromfile(testdatafile, dtype=np.int32, count=1).byteswap().squeeze()
@@ -58,27 +54,22 @@ while (choice.lower() == "y"):
     choice = input("See some more examples? Y\\N\n")
 
 # make tensors
-X_train, X_dev, y_train, y_dev = train_test_split(X, Y_aux, test_size=DEV_SET_RATION, shuffle=True)
-X_train = torch.from_numpy(X_train.astype(np.float32))
-y_train = torch.from_numpy(y_train.astype(np.int64))
-X_dev = torch.from_numpy(X_dev.astype(np.float32))
-y_dev = torch.from_numpy(y_dev.astype(np.int64))
+X_train = torch.from_numpy(X.astype(np.float32))
+y_train = torch.from_numpy(Y.astype(np.int64))
 X_test = torch.from_numpy(X_test.astype(np.float32))
 y_test = torch.from_numpy(y_test.astype(np.int64))
 
 # model
 model = nn.Sequential(
     nn.Linear(dims[1], 500),
-    nn.Linear(500, 200),
-    nn.Linear(200, 10)
+    nn.Linear(500, 300),
+    nn.Linear(300, 10)
 )
 
 if torch.cuda.is_available():
     model.cuda()
     X_train = X_train.cuda()
     y_train = y_train.cuda()
-    X_dev = X_dev.cuda()
-    y_dev = y_dev.cuda()
     X_test = X_test.cuda()
     y_test = y_test.cuda()
 
@@ -86,7 +77,7 @@ if torch.cuda.is_available():
 criterion = nn.CrossEntropyLoss()
 
 # optimizer
-optim = torch.optim.AdamW(model.parameters(), lr=0.01)
+optim = torch.optim.AdamW(model.parameters(), lr=0.01, weight_decay=0.1)
 
 # helper function to calculate accuracy
 def calculate_accuracy(X, y):
@@ -94,12 +85,10 @@ def calculate_accuracy(X, y):
         _, preds = torch.max(model(X), dim=1)
         return torch.sum(preds == y).item() / len(y) * 100
 
-print("Train {:.2f}%".format(calculate_accuracy(X_train, y_train)))
-print("Dev {:.2f}%".format(calculate_accuracy(X_dev, y_dev)))
-print("Test {:.2f}%\n".format(calculate_accuracy(X_test, y_test)))
+print("Initial test accuracy: {:.2f}%\n".format(calculate_accuracy(X_test, y_test)))
 
 # training
-epochs = 100
+epochs = 200
 losses = []
 print("Training for {} epochs...".format(epochs))
 start_time = time()
@@ -115,7 +104,8 @@ for epoch in range(epochs):
     losses.append(loss.item())
 
     if (epoch + 1) % 10 == 0:
-        print("Epoch {} Loss: {:.4f}".format(epoch + 1, loss))
+        print("Epoch {} Loss: {:.4f} Acc: {:.2f}%".format(
+            epoch + 1, loss, calculate_accuracy(X_train, y_train)))
 
 print("Done! Training time: {:.2f} m\n".format((time() - start_time) / 60))
 
@@ -123,9 +113,7 @@ plt.figure("Learning Curve")
 plt.plot(losses)
 plt.show()
 
-print("Train {:.2f}%".format(calculate_accuracy(X_train, y_train)))
-print("Dev {:.2f}%".format(calculate_accuracy(X_dev, y_dev)))
-print("Test {:.2f}%".format(calculate_accuracy(X_test, y_test)))
+print("Test accuracy: {:.2f}%".format(calculate_accuracy(X_test, y_test)))
 
 choice = input("Try some predictions? Y/N\n")
 while (choice.lower() == 'y'):
