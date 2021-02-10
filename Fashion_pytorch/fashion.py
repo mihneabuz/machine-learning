@@ -10,8 +10,7 @@ traindatafile = "train-images-idx3-ubyte"
 trainlabelfile = "train-labels-idx1-ubyte"
 testdatafile = "t10k-images-idx3-ubyte"
 testlabelfile = "t10k-labels-idx1-ubyte"
-DEV_SET_RATION = 0.2
-BATCH_SIZE = 1000
+DEV_SET_RATION = 0.01
 
 # Loading all data
 print("Loading data...")
@@ -61,22 +60,33 @@ while (choice.lower() == "y"):
 # make tensors
 X_train, X_dev, y_train, y_dev = train_test_split(X, Y_aux, test_size=DEV_SET_RATION, shuffle=True)
 X_train = torch.from_numpy(X_train.astype(np.float32))
-X_dev = torch.from_numpy(X_dev.astype(np.float32))
 y_train = torch.from_numpy(y_train.astype(np.int64))
+X_dev = torch.from_numpy(X_dev.astype(np.float32))
 y_dev = torch.from_numpy(y_dev.astype(np.int64))
 X_test = torch.from_numpy(X_test.astype(np.float32))
 y_test = torch.from_numpy(y_test.astype(np.int64))
 
 # model
 model = nn.Sequential(
-    nn.Linear(dims[1], 10),
+    nn.Linear(dims[1], 500),
+    nn.Linear(500, 200),
+    nn.Linear(200, 10)
 )
+
+if torch.cuda.is_available():
+    model.cuda()
+    X_train = X_train.cuda()
+    y_train = y_train.cuda()
+    X_dev = X_dev.cuda()
+    y_dev = y_dev.cuda()
+    X_test = X_test.cuda()
+    y_test = y_test.cuda()
 
 # loss functions
 criterion = nn.CrossEntropyLoss()
 
 # optimizer
-optim = torch.optim.SGD(model.parameters(), lr=0.001)
+optim = torch.optim.AdamW(model.parameters(), lr=0.01)
 
 # helper function to calculate accuracy
 def calculate_accuracy(X, y):
@@ -88,10 +98,6 @@ print("Train {:.2f}%".format(calculate_accuracy(X_train, y_train)))
 print("Dev {:.2f}%".format(calculate_accuracy(X_dev, y_dev)))
 print("Test {:.2f}%\n".format(calculate_accuracy(X_test, y_test)))
 
-# making a DataLoader
-train_ds = TensorDataset(X_train, y_train)
-train_dl = DataLoader(train_ds, BATCH_SIZE, shuffle=True)
-
 # training
 epochs = 100
 losses = []
@@ -99,20 +105,19 @@ print("Training for {} epochs...".format(epochs))
 start_time = time()
 
 for epoch in range(epochs):
-    for X, y in train_dl:
-        preds = model(X)
-        loss = criterion(preds, y)
+    preds = model(X_train)
+    loss = criterion(preds, y_train)
 
-        optim.zero_grad()
-        loss.backward()
-        optim.step()
+    optim.zero_grad()
+    loss.backward()
+    optim.step()
 
-        losses.append(loss.item())
+    losses.append(loss.item())
 
     if (epoch + 1) % 10 == 0:
         print("Epoch {} Loss: {:.4f}".format(epoch + 1, loss))
 
-print("Done! Training time: {:.2f}s\n".format((time() - start_time)))
+print("Done! Training time: {:.2f} m\n".format((time() - start_time) / 60))
 
 plt.figure("Learning Curve")
 plt.plot(losses)
@@ -129,6 +134,6 @@ while (choice.lower() == 'y'):
         with torch.no_grad():
             _, pred = torch.max(model(torch.unsqueeze(X_test[ex], 0)), dim=1)
         print("Prediction: ", clothes_dict[pred.item()])
-        plt.imshow(X_test[ex].detach().numpy().reshape(28, 28), cmap='gray')
+        plt.imshow(X_test[ex].detach().cpu().numpy().reshape(28, 28), cmap='gray')
         plt.show()
     choice = input("Try some more predictions? Y/N\n")
