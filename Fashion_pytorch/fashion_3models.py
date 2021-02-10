@@ -67,11 +67,15 @@ X_test = torch.from_numpy(X_test.astype(np.float32))
 y_test = torch.from_numpy(y_test.astype(np.int64))
 
 # models
-model1 = nn.Linear(dims[1], 10)
+model1 = nn.Sequential(
+    nn.Linear(dims[1], 200),
+    nn.Linear(200, 10)
+)
 
 model2 = nn.Sequential(
     nn.Linear(dims[1], 300),
-    nn.Linear(300, 10)
+    nn.Linear(300, 100),
+    nn.Linear(100, 10)
 )
 
 model3 = nn.Sequential(
@@ -95,13 +99,13 @@ if torch.cuda.is_available():
 criterion = nn.CrossEntropyLoss()
 
 # optimizers
-optim1 = torch.optim.SGD(model1.parameters(), lr=0.1)
-optim2 = torch.optim.Adam(model2.parameters(), lr=0.01, weight_decay=0.01)
-optim3 = torch.optim.AdamW(model3.parameters(), lr=0.01, weight_decay=0.1)
+optim1 = torch.optim.SGD(model1.parameters(), lr=0.03, momentum=0.1)
+optim2 = torch.optim.Adam(model2.parameters(), lr=0.0003, weight_decay=0.01)
+optim3 = torch.optim.AdamW(model3.parameters(), lr=0.0003, weight_decay=0.1)
 
 print("Training 3 models:")
-print("Model 1: 784->10, Gradient Descent")
-print("Model 1: 784->300->10, Adam with reg lambda 0.01")
+print("Model 1: 784->200->10, Gradient Descent with momentum 0.1")
+print("Model 1: 784->300->100->10, Adam with reg lambda 0.01")
 print("Model 1: 784->500->200->10, AdamW with reg lambda 0.1\n")
 
 # helper function to calculate accuracy
@@ -167,6 +171,7 @@ print("Model 2: {:.2f}%".format(acc2))
 print("Model 3: {:.2f}%\n".format(acc3))
 
 model = model3
+print("Test accuracy: {:.2f}%".format(calculate_accuracy(model, X_test, y_test)))
 choice = input("Try some predictions? Y/N\n")
 while (choice.lower() == 'y'):
     for i in range(10):

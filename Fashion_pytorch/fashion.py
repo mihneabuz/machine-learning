@@ -63,6 +63,7 @@ y_test = torch.from_numpy(y_test.astype(np.int64))
 model = nn.Sequential(
     nn.Linear(dims[1], 500),
     nn.Linear(500, 300),
+    nn.Linear(300, 300),
     nn.Linear(300, 10)
 )
 
@@ -77,7 +78,7 @@ if torch.cuda.is_available():
 criterion = nn.CrossEntropyLoss()
 
 # optimizer
-optim = torch.optim.AdamW(model.parameters(), lr=0.01, weight_decay=0.1)
+optim = torch.optim.AdamW(model.parameters(), lr=0.0003, weight_decay=0.2)
 
 # helper function to calculate accuracy
 def calculate_accuracy(X, y):
