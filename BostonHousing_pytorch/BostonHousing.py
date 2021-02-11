@@ -4,8 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import torch
 from torch import nn
-from torch.utils.data import TensorDataset, DataLoader, random_split
-from sklearn import preprocessing
+from torch.utils.data import TensorDataset, DataLoader
 from sklearn.model_selection import train_test_split
 TEST_SET_RATIO = 0.3
 BATCH_SIZE = 32

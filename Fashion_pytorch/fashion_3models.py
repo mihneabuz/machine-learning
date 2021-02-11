@@ -1,10 +1,9 @@
+from time import time
 import torch
 from torch import nn
 import numpy as np
 import matplotlib.pyplot as plt
-from torch.utils.data import TensorDataset, DataLoader
 from sklearn.model_selection import train_test_split
-from time import time
 
 traindatafile = "train-images-idx3-ubyte"
 trainlabelfile = "train-labels-idx1-ubyte"
@@ -31,14 +30,14 @@ for i in range(dims[0]):
 print("Train labels:", Y.shape)
 
 magic = np.fromfile(testdatafile, dtype=np.int32, count=1).byteswap().squeeze()
-assert(magic == 2051)
+assert magic == 2051
 dimst = np.fromfile(testdatafile, dtype=np.int32, count=3, offset=4).byteswap()
 dimst = (dimst[0], dimst[1] * dimst[2])
 X_test = np.fromfile(testdatafile, dtype=np.dtype('>u1'), count=dimst[0]*dimst[1],
                     offset=16).reshape(dimst) / 255
 
 magic = np.fromfile(testlabelfile, dtype=np.int32, count=1).byteswap().squeeze()
-assert(magic == 2049)
+assert magic == 2049
 y_test = np.fromfile(testlabelfile, dtype=np.dtype('>u1'), count=dimst[0], offset=8)
 
 
@@ -48,7 +47,7 @@ clothes_dict = {0:"T-shirt", 1:"Trouser", 2:"Pullover", 3:"Dress", 4:"Coat",
 
 # visualize some pictures
 choice = input("See some examples? Y\\N\n")
-while (choice.lower() == "y"):
+while choice.lower() == "y":
     for i in range(5):
         ex = np.random.randint(0, dims[0])
         print("Example:", clothes_dict[np.argmax(Y[ex])])
@@ -173,7 +172,7 @@ print("Model 3: {:.2f}%\n".format(acc3))
 model = model3
 print("Test accuracy: {:.2f}%".format(calculate_accuracy(model, X_test, y_test)))
 choice = input("Try some predictions? Y/N\n")
-while (choice.lower() == 'y'):
+while choice.lower() == 'y':
     for i in range(10):
         ex = np.random.randint(0, dimst[0])
         with torch.no_grad():
