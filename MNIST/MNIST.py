@@ -5,13 +5,11 @@ from time import time
 import numpy as np
 import matplotlib.pyplot as plt
 from NNClass import NN
-from drawimage import drawImage
 
 traindatafile = "train-images-idx3-ubyte"
 trainlabelfile = "train-labels-idx1-ubyte"
 testdatafile = "t10k-images-idx3-ubyte"
 testlabelfile = "t10k-labels-idx1-ubyte"
-order = "big"
 
 print("Loading train data...")
 magic1 = np.fromfile(traindatafile, dtype=np.int32, count=1).byteswap().squeeze()
@@ -72,7 +70,7 @@ while choice.lower() == 'y':
     nn.learn_rate = learning_rate
     print("Training...")
     begin = time()
-    costs += nn.learn(X_train.reshape(dims[0], dims[1] * dims[2]).T, Y_train.T, iter=iters)
+    costs += nn.learn(X_train.reshape(dims[0], dims[1]*dims[2]).T, Y_train.T, iters=iters)
     print("Done!")
     print("Train time: {:.2f} minutes".format((time() - begin) / 60))
 
@@ -94,12 +92,12 @@ magic1 = np.fromfile(testdatafile, dtype=np.int32, count=1).byteswap().squeeze()
 assert magic1 == 2051
 dims = np.fromfile(testdatafile, dtype=np.int32, count=3, offset=4).byteswap()
 X_test = np.memmap(testdatafile, dtype=np.dtype('>u1'), mode='r',
-                    offset=16).reshape(dims)
+                   offset=16).reshape(dims)
 
 magic2 = np.fromfile(testlabelfile, dtype=np.int32, count=1).byteswap().squeeze()
 assert magic2 == 2049
 Y_test = (np.memmap(testlabelfile, dtype=np.dtype('>u1'), mode='r', offset=8)
-            .reshape(dims[0], 1))
+          .reshape(dims[0], 1))
 
 print("Test accuracy: {:.1f}%".format(
     nn.calculate_accuracy(X_test.reshape(dims[0], dims[1] * dims[2]).T, Y_test)))
@@ -124,12 +122,13 @@ choice = input("Try to draw some examples? Y/N\n")
 if choice.lower() == 'y':
     print("Draw a digit and press enter!")
 while choice.lower() == 'y':
+    from drawimage import drawImage
     X_draw = np.array(drawImage())
     prediction, chance = nn.predict(X_draw.reshape(1, dims[1]* dims[2]).T)
-    if (chance > 0.75):
+    if chance > 0.75:
         print("That's a {} for sure!\n".format(prediction))
-    elif (chance < 0.5):
+    elif chance < 0.5:
         print("Not quite sure, maybe a {}?\n".format(prediction))
     else:
-        print("That's a {}!, i think".format(prediction, chance))
+        print("That's a {}!, i think".format(prediction))
     choice = input("Another one? Y/N\n")

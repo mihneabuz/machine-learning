@@ -142,7 +142,7 @@ class NN:
             AL, cache = self.model_fw(X_norm)
             grads = self.model_bw(AL, Y, cache)
             self.update_params(grads)
-            if (not suppress and not i % 10):
+            if not suppress and not i % 10:
                 cost = self.compute_cost(AL, Y)
                 costs.append(cost)
                 print("Iters:", i, " Cost:", cost)
@@ -228,7 +228,7 @@ class NN:
         grads2 = self.model_bw(AL2, np.ones(AL2.shape), cache2)
         print("Done!")
         for key in self.parameters:
-            assert('d' + key in grads1 and 'd' + key in grads2)
+            assert 'd' + key in grads1 and 'd' + key in grads2
         print("Update parameters")
         self.update_params(grads1)
         self.update_params(grads2)
