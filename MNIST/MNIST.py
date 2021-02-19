@@ -8,7 +8,10 @@ from NNClass import NN
 from load_data import load_train, load_test
 
 print("Loading train data...")
-X_train, Y_train, dims = load_train()
+X_train, Y_train_aux, dims = load_train()
+Y_train = np.zeros((dims[0], 10))
+for i in range(dims[0]):
+    Y_train[i, Y_train_aux[i] % 10] = 1
 
 print("Train data:", X_train.shape)
 print("Train labels:", Y_train.shape)
@@ -97,14 +100,15 @@ while choice.lower() == 'y':
 choice = input("Try to draw some examples? Y/N\n")
 if choice.lower() == 'y':
     print("Draw a digit and press enter!")
-while choice.lower() == 'y':
-    from drawimage import drawImage
-    X_draw = np.array(drawImage())
-    prediction, chance = nn.predict(X_draw.reshape(1, dims[1]* dims[2]).T)
-    if chance > 0.75:
-        print("That's a {} for sure!\n".format(prediction))
-    elif chance < 0.5:
-        print("Not quite sure, maybe a {}?\n".format(prediction))
-    else:
-        print("That's a {}!, i think".format(prediction))
-    choice = input("Another one? Y/N\n")
+
+    while choice.lower() == 'y':
+        from drawimage import drawImage
+        X_draw = np.array(drawImage())
+        prediction, chance = nn.predict(X_draw.reshape(1, dims[1]* dims[2]).T)
+        if chance > 0.75:
+            print("That's a {} for sure!\n".format(prediction))
+        elif chance < 0.5:
+            print("Not quite sure, maybe a {}?\n".format(prediction))
+        else:
+            print("That's a {}!, i think".format(prediction))
+        choice = input("Another one? Y/N\n")
