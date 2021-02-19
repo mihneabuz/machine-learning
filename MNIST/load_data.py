@@ -13,11 +13,7 @@ def load_train():
 
     magic2 = np.fromfile(trainlabelfile, dtype=np.int32, count=1).byteswap().squeeze()
     assert magic2 == 2049
-    Y_train_aux = np.fromfile(trainlabelfile, dtype=np.dtype('>u1'), count=dims[0], offset=8)
-
-    Y_train = np.zeros((dims[0], 10))
-    for i in range(dims[0]):
-        Y_train[i, Y_train_aux[i] % 10] = 1
+    Y_train = np.fromfile(trainlabelfile, dtype=np.dtype('>u1'), count=dims[0], offset=8)
 
     return X_train, Y_train, dims
 
