@@ -3,38 +3,22 @@ import torch
 from torch import nn
 import numpy as np
 import matplotlib.pyplot as plt
+from load_data import load_train, load_test
 
-traindatafile = "train-images-idx3-ubyte"
-trainlabelfile = "train-labels-idx1-ubyte"
-testdatafile = "t10k-images-idx3-ubyte"
-testlabelfile = "t10k-labels-idx1-ubyte"
-
-# Loading all data
 print("Loading data...")
-magic = np.fromfile(traindatafile, dtype=np.int32, count=1).byteswap().squeeze()
-assert magic == 2051
-dims = np.fromfile(traindatafile, dtype=np.int32, count=3, offset=4).byteswap()
+
+X, Y, dims = load_train()
+X_test, y_test, dimst = load_test()
+
 dims = (dims[0], dims[1] * dims[2])
-X = np.fromfile(traindatafile, dtype=np.dtype('>u1'), count=dims[0]*dims[1],
-                      offset=16).reshape(dims) / 256
-print("Train set:", X.shape)
-
-magic = np.fromfile(trainlabelfile, dtype=np.int32, count=1).byteswap().squeeze()
-assert magic == 2049
-Y = np.fromfile(trainlabelfile, dtype=np.dtype('>u1'), count=dims[0], offset=8)
-print("Train labels:", Y.shape)
-
-magic = np.fromfile(testdatafile, dtype=np.int32, count=1).byteswap().squeeze()
-assert magic == 2051
-dimst = np.fromfile(testdatafile, dtype=np.int32, count=3, offset=4).byteswap()
 dimst = (dimst[0], dimst[1] * dimst[2])
-X_test = np.fromfile(testdatafile, dtype=np.dtype('>u1'), count=dimst[0]*dimst[1],
-                    offset=16).reshape(dimst) / 256
 
-magic = np.fromfile(testlabelfile, dtype=np.int32, count=1).byteswap().squeeze()
-assert magic == 2049
-y_test = np.fromfile(testlabelfile, dtype=np.dtype('>u1'), count=dimst[0], offset=8)
+X = X.reshape(dims)
+X_test = X_test.reshape(dimst)
+y_test = y_test.reshape(dimst[0])
 
+print("Train set:", X.shape)
+print("Train labels:", Y.shape)
 
 # classification dictionary
 clothes_dict = {0:"T-shirt", 1:"Trouser", 2:"Pullover", 3:"Dress", 4:"Coat",
@@ -45,8 +29,8 @@ choice = input("See some examples? Y\\N\n")
 while choice.lower() == "y":
     for i in range(5):
         ex = np.random.randint(0, dims[0])
-        print("Example:", clothes_dict[np.argmax(Y[ex])])
-        plt.figure(clothes_dict[np.argmax(Y[ex])])
+        print("Example:", clothes_dict[Y[ex]])
+        plt.figure(clothes_dict[Y[ex]])
         plt.imshow(X[ex].reshape([28, 28]), cmap="gray")
         plt.show()
     choice = input("See some more examples? Y\\N\n")
@@ -76,13 +60,13 @@ if torch.cuda.is_available():
 criterion = nn.CrossEntropyLoss()
 
 # optimizer
-optim = torch.optim.AdamW(model.parameters(), lr=0.0003, weight_decay=0.2)
+optim = torch.optim.AdamW(model.parameters(), lr=0.0001, weight_decay=0.2)
 
 # helper function to calculate accuracy
-def calculate_accuracy(X, y):
+def calculate_accuracy(X_set, y_set):
     with torch.no_grad():
-        _, preds = torch.max(model(X), dim=1)
-        return torch.sum(preds == y).item() / len(y) * 100
+        _, preds_set = torch.max(model(X_set), dim=1)
+        return torch.sum(preds_set == y_set).item() / len(y_set) * 100
 
 print("Initial test accuracy: {:.2f}%\n".format(calculate_accuracy(X_test, y_test)))
 
