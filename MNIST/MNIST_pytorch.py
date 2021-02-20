@@ -4,6 +4,7 @@ from torch import nn
 import numpy as np
 import matplotlib.pyplot as plt
 from load_data import load_train, load_test
+from data_augmentation import random_rotate, mean_normalize
 
 print("Loading data...")
 
@@ -12,19 +13,30 @@ X_test, y_test, dimst = load_test()
 dims = [dims[0], 1, dims[1], dims[2]]
 dimst = [dimst[0], 1, dimst[1], dimst[2]]
 
-X = X.reshape(dims) / 256
-X_test = X_test.reshape(dimst) / 256
+X = X.reshape(dims)
+X_test = X_test.reshape(dimst)
 y_test = y_test.reshape(dimst[0])
+
+choice = input("Augment data? Y\\N\n")
+if choice.lower() == "y":
+    X_rot = random_rotate(X, degrees=15)
+    Y_rot = np.copy(Y)
+    X = np.concatenate((X, X_rot))
+    Y = np.concatenate((Y, Y_rot))
+    dims = X.shape
 
 print("Train set:", X.shape)
 print("Train labels:", Y.shape)
+
+X = mean_normalize(X)
+X_test = mean_normalize(X_test)
 
 # visualize some pictures
 choice = input("See some examples? Y\\N\n")
 while choice.lower() == "y":
     for i in range(5):
         ex = np.random.randint(0, dims[0])
-        print("Example:", Y[ex])
+        print("Example", ex, ":", Y[ex])
         plt.figure(Y[ex])
         plt.imshow(X[ex].reshape([28, 28]), cmap="gray")
         plt.show()
@@ -54,7 +66,8 @@ model = nn.Sequential(
     nn.Flatten(),
     nn.Linear(7 * 7 * 10, 200),
     nn.Linear(200, 100),
-    nn.Linear(100, 10)
+    nn.Linear(100, 10),
+#    nn.Softmax(dim=0)
 )
 if cuda:
     model.cuda()
@@ -79,7 +92,7 @@ X_test = X_test.cpu()
 y_test = y_test.cpu()
 
 # training
-epochs = 20
+epochs = 5
 losses = []
 print("Training for {} epochs...".format(epochs))
 start_time = time()
