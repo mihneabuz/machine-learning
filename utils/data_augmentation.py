@@ -13,7 +13,8 @@ def random_rotate(data, degrees=10):
 
     return results
 
-def mean_normalize(data):
-    mean = data.mean()
-    std = data.std()
+def compute_mean_std(data):
+    return data.mean(), data.std()
+
+def mean_normalize(data, std, mean):
     return (data - mean) / std

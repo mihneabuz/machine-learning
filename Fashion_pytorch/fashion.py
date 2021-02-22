@@ -1,3 +1,6 @@
+from sys import path
+path.append('../utils')
+
 from time import time
 import torch
 from torch import nn

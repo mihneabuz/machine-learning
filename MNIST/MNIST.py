@@ -1,5 +1,5 @@
 from sys import path
-path.append('../')
+path.append('../utils')
 
 from time import time
 import numpy as np
