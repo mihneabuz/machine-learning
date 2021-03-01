@@ -15,12 +15,14 @@ trans = transforms.Compose([
 print('Loading train set...')
 train_dataset = datasets.CIFAR10(root='./data/train', train=True, download=True,
                                  transform=trans)
-train_dl = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=2)
+train_dl = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=2,
+                      pin_memory=True)
 
 print('Loading test set...')
 test_dataset = datasets.CIFAR10(root='./data/test', train=False, download=True,
                                 transform=trans)
-test_dl = DataLoader(test_dataset, batch_size=64, shuffle=True, num_workers=2)
+test_dl = DataLoader(test_dataset, batch_size=4, shuffle=True, num_workers=2,
+                     pin_memory=True)
 
 print(len(train_dataset), len(test_dataset))
 
@@ -30,8 +32,8 @@ class_dict = {0:'plane', 1:'car', 2:'bird', 3:'cat', 4:'deer', 5:'dog',
 
 # visualize some pictures
 choice = input("See some examples? Y\\N\n")
+im_iter = iter(train_dl)
 while choice.lower() == "y":
-    im_iter = iter(train_dl)
     images, labels = im_iter.next()
     images = images / 2 + 0.5
     plt.imshow(utils.make_grid(images).permute(1, 2, 0))
@@ -43,36 +45,54 @@ cuda = torch.cuda.is_available()
 
 # create model
 model = nn.Sequential(
-    nn.Conv2d(3, 16, kernel_size=5, stride=1, padding=2, bias=True),
+    ####################  First Convs  ####################
+    nn.Conv2d(3,  32, kernel_size=5, stride=1, padding=2),
     nn.ReLU(inplace=True),
-
-    nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1, bias=False),
     nn.BatchNorm2d(32),
+
+    nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1),
     nn.ReLU(inplace=True),
+    nn.BatchNorm2d(32),
 
     nn.MaxPool2d(kernel_size=2, stride=2),
-    nn.Dropout(p=0.25, inplace=True),
+    nn.Dropout(p=0.2, inplace=True),
+    #######################################################
 
-    nn.Conv2d(32, 64, kernel_size=5, stride=1, bias=True),
+    #################### Second Convs #####################
+    nn.Conv2d(32, 64, kernel_size=5, stride=1, padding=2),
     nn.ReLU(inplace=True),
+    nn.BatchNorm2d(64),
 
-    nn.Conv2d(64, 128, kernel_size=3, stride=1, bias=False),
+    nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
+    nn.ReLU(inplace=True),
+    nn.BatchNorm2d(64),
+
+    nn.MaxPool2d(kernel_size=2, stride=2),
+    nn.Dropout(p=0.2, inplace=True),
+    #######################################################
+
+    #################### Final Convs ######################
+    nn.Conv2d(64, 128, kernel_size=5, stride=1, padding=2),
+    nn.ReLU(inplace=True),
     nn.BatchNorm2d(128),
+
+    nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1),
     nn.ReLU(inplace=True),
+    nn.BatchNorm2d(128),
 
     nn.MaxPool2d(kernel_size=2, stride=2),
-    nn.Dropout(p=0.25, inplace=True),
+    nn.Dropout(p=0.2, inplace=True),
+    #######################################################
+
+    #################### Dense Layers #####################
     nn.Flatten(),
 
-    nn.Linear(5 * 5 * 128, 512),
-    nn.ReLU(inplace=True),
-    nn.BatchNorm1d(512),
-
-    nn.Linear(512, 256),
+    nn.Linear(4 * 4 * 128, 256),
     nn.ReLU(inplace=True),
     nn.BatchNorm1d(256),
 
     nn.Linear(256, 10),
+    #######################################################
 )
 
 if cuda:
@@ -93,19 +113,18 @@ def calculate_accuracy(dataloader):
             if cuda:
                 x_set = x_set.cuda()
                 y_set = y_set.cuda()
-            _, preds_set = torch.max(model(x_set).data, 1)
+            preds_set = torch.argmax(model(x_set), dim=1)
             total += y_set.size(0)
             correct += (preds_set == y_set).sum().item()
     return correct / total * 100
 
-print("Initial accuracy: {:.2f}%".format(calculate_accuracy(test_dl)))
-
-epochs = 30
+epochs = 100
 print("Trainning for {} epochs...".format(epochs))
 if cuda:
     print("HahA GPU goes brrrrr")
 
 # training loop
+model.train()
 losses = []
 start_time = time()
 for epoch in range(epochs):
@@ -132,16 +151,19 @@ plt.figure("Learning Curve")
 plt.plot(losses)
 plt.show()
 
+model.eval()
 print("\nTest Accuracy: {:.2f}%".format(calculate_accuracy(test_dl)))
 
 # testing model
 model.cpu()
 choice = input("Make some predictions? Y\\N\n")
+im_iter = iter(test_dl)
 while choice.lower() == "y":
-    for x, y in test_dl:
-        preds = model(x)[0]
-        print("Thats a {}! (it's actually a {})".format(class_dict[torch.argmax(preds[0]).item()],
-                                                        class_dict[y[0].item()]))
-        plt.imshow(x[0].permute(1, 2, 0) / 2 + 0.5)
-        plt.show()
+    images, labels = im_iter.next()
+    images = images / 2 + 0.5
+    preds = torch.argmax(model(images), dim=1)
+    print("Predictions:", ", ".join([class_dict[x.item()] for x in preds]))
+    print("Labels:", ", ".join([class_dict[x.item()] for x in labels]))
+    plt.imshow(utils.make_grid(images).permute(1, 2, 0))
+    plt.show()
     choice = input("See some more predictions? Y\\N\n")
