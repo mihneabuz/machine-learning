@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from torchvision import datasets, transforms
+from torchvision import datasets, transforms, utils
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 from time import time
@@ -20,7 +20,7 @@ train_dl = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=2)
 print('Loading test set...')
 test_dataset = datasets.CIFAR10(root='./data/test', train=False, download=True,
                                 transform=trans)
-test_dl = DataLoader(test_dataset, batch_size=1000, shuffle=True)
+test_dl = DataLoader(test_dataset, batch_size=64, shuffle=True, num_workers=2)
 
 print(len(train_dataset), len(test_dataset))
 
@@ -31,10 +31,11 @@ class_dict = {0:'plane', 1:'car', 2:'bird', 3:'cat', 4:'deer', 5:'dog',
 # visualize some pictures
 choice = input("See some examples? Y\\N\n")
 while choice.lower() == "y":
-    for x, y in train_dl:
-        plt.imshow(x[0].permute(1, 2, 0))
-        print(class_dict[int(y[0].detach().numpy())])
-        plt.show()
+    im_iter = iter(train_dl)
+    images, labels = im_iter.next()
+    images = images / 2 + 0.5
+    plt.imshow(utils.make_grid(images).permute(1, 2, 0))
+    plt.show()
     choice = input("See some more examples? Y\\N\n")
 
 # check for cuda
@@ -81,23 +82,25 @@ if cuda:
 criterion = nn.CrossEntropyLoss()
 
 # optimizer
-optim = torch.optim.Adam(model.parameters(), lr=1e-5, weight_decay=0.1)
+optim = torch.optim.AdamW(model.parameters(), lr=1e-5, weight_decay=0.1)
 
 # accuracy helper function
 def calculate_accuracy(dataloader):
-    count = 0
+    total = 0
+    correct = 0
     with torch.no_grad():
         for x_set, y_set in dataloader:
             if cuda:
                 x_set = x_set.cuda()
                 y_set = y_set.cuda()
-            _, preds_set = torch.max(model(x_set), dim=1)
-            count += torch.sum(preds_set == y_set).item()
-    return count / (len(dataloader) * dataloader.batch_size) * 100
+            _, preds_set = torch.max(model(x_set).data, 1)
+            total += y_set.size(0)
+            correct += (preds_set == y_set).sum().item()
+    return correct / total * 100
 
 print("Initial accuracy: {:.2f}%".format(calculate_accuracy(test_dl)))
 
-epochs = 10
+epochs = 30
 print("Trainning for {} epochs...".format(epochs))
 if cuda:
     print("HahA GPU goes brrrrr")
@@ -136,9 +139,9 @@ model.cpu()
 choice = input("Make some predictions? Y\\N\n")
 while choice.lower() == "y":
     for x, y in test_dl:
-        preds = model(x[0:2])
+        preds = model(x)[0]
         print("Thats a {}! (it's actually a {})".format(class_dict[torch.argmax(preds[0]).item()],
-                                                        class_dict[y[0]]))
-        plt.imshow(x[0].permute(1, 2, 0))
+                                                        class_dict[y[0].item()]))
+        plt.imshow(x[0].permute(1, 2, 0) / 2 + 0.5)
         plt.show()
     choice = input("See some more predictions? Y\\N\n")
