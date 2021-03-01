@@ -5,15 +5,21 @@ from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 from time import time
 
+# defining transformations
+trans = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
+])
+
 # loading data with torchvision
 print('Loading train set...')
 train_dataset = datasets.CIFAR10(root='./data/train', train=True, download=True,
-                                 transform=transforms.ToTensor())
-train_dl = DataLoader(train_dataset, batch_size=1000, shuffle=True, pin_memory=True)
+                                 transform=trans)
+train_dl = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=2)
 
 print('Loading test set...')
 test_dataset = datasets.CIFAR10(root='./data/test', train=False, download=True,
-                                transform=transforms.ToTensor())
+                                transform=trans)
 test_dl = DataLoader(test_dataset, batch_size=1000, shuffle=True)
 
 print(len(train_dataset), len(test_dataset))
