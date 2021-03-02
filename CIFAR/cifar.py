@@ -1,29 +1,45 @@
+import numpy as np
 import torch
 from torch import nn
 from torchvision import datasets, transforms, utils
 from torch.utils.data import DataLoader
+from imgaug import augmenters
 import matplotlib.pyplot as plt
 from time import time
 
 # defining transformations
-trans = transforms.Compose([
+to_tensor = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
+])
+
+# data augmentation
+augment = augmenters.Sequential([
+    augmenters.Fliplr(0.5),
+    augmenters.Crop(percent=(0, 0.1)),
+    augmenters.LinearContrast((0.8, 1.5)),
+    augmenters.AdditiveGaussianNoise(scale=(0.0, 0.01 * 255)),
+    augmenters.Affine(rotate=(-15, 15), scale={"x":(1, 1.2), "y":(1, 1.2)})
+], random_order=True)
+
+torch_augment = transforms.Compose([
+    lambda x: augment(image=np.array(x)),
+    to_tensor
 ])
 
 # loading data with torchvision
 print('Loading train set...')
 train_dataset = datasets.CIFAR10(root='./data/train', train=True, download=True,
-                                 transform=trans)
-train_dl = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=2,
-                      pin_memory=True)
+                                 transform=torch_augment)
+train_dl = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=2)
 
 print('Loading test set...')
 test_dataset = datasets.CIFAR10(root='./data/test', train=False, download=True,
-                                transform=trans)
-test_dl = DataLoader(test_dataset, batch_size=4, shuffle=True, num_workers=2,
-                     pin_memory=True)
+                                transform=to_tensor)
+test_dl = DataLoader(test_dataset, batch_size=4, shuffle=True, num_workers=2)
 
+
+# adding the augmented data to the dataset
 print(len(train_dataset), len(test_dataset))
 
 # classification dictionary
@@ -46,7 +62,7 @@ cuda = torch.cuda.is_available()
 # create model
 model = nn.Sequential(
     ####################  First Convs  ####################
-    nn.Conv2d(3,  32, kernel_size=5, stride=1, padding=2),
+    nn.Conv2d(3, 32, kernel_size=5, stride=1, padding=2),
     nn.ReLU(inplace=True),
     nn.BatchNorm2d(32),
 
@@ -118,7 +134,7 @@ def calculate_accuracy(dataloader):
             correct += (preds_set == y_set).sum().item()
     return correct / total * 100
 
-epochs = 100
+epochs = 0
 print("Trainning for {} epochs...".format(epochs))
 if cuda:
     print("HahA GPU goes brrrrr")
@@ -163,7 +179,7 @@ while choice.lower() == "y":
     images = images / 2 + 0.5
     preds = torch.argmax(model(images), dim=1)
     print("Predictions:", ", ".join([class_dict[x.item()] for x in preds]))
-    print("Labels:", ", ".join([class_dict[x.item()] for x in labels]))
+    print("Labels:     ", ", ".join([class_dict[x.item()] for x in labels]))
     plt.imshow(utils.make_grid(images).permute(1, 2, 0))
     plt.show()
     choice = input("See some more predictions? Y\\N\n")
