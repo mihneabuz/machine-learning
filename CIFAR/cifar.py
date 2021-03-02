@@ -3,56 +3,46 @@ import torch
 from torch import nn
 from torchvision import datasets, transforms, utils
 from torch.utils.data import DataLoader
-from imgaug import augmenters
 import matplotlib.pyplot as plt
 from time import time
 
 # defining transformations
+rgb_mean = np.array([0.485, 0.456, 0.406])
+rgb_std = np.array([0.229, 0.224, 0.225])
 to_tensor = transforms.Compose([
     transforms.ToTensor(),
-    transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
+    transforms.Normalize(mean=rgb_mean, std=rgb_std)
 ])
 
 # data augmentation
-augment = augmenters.Sequential([
-    augmenters.Fliplr(0.5),
-    augmenters.Crop(percent=(0, 0.1)),
-    augmenters.LinearContrast((0.8, 1.5)),
-    augmenters.AdditiveGaussianNoise(scale=(0.0, 0.01 * 255)),
-    augmenters.Affine(rotate=(-15, 15), scale={"x":(1, 1.2), "y":(1, 1.2)})
-], random_order=True)
-
-torch_augment = transforms.Compose([
-    lambda x: augment(image=np.array(x)),
+augment = transforms.Compose([
+    transforms.RandomHorizontalFlip(p=0.5),
+    transforms.ColorJitter(contrast=(0.8, 1.2), saturation=(0.9, 1.1)),
     to_tensor
 ])
 
 # loading data with torchvision
 print('Loading train set...')
-train_dataset = datasets.CIFAR10(root='./data/train', train=True, download=True,
-                                 transform=torch_augment)
-train_dl = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=2)
+train_dataset = datasets.CIFAR10(root='./data/train', train=True, download=True, transform=augment)
+train_dl = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=3)
 
 print('Loading test set...')
-test_dataset = datasets.CIFAR10(root='./data/test', train=False, download=True,
-                                transform=to_tensor)
+test_dataset = datasets.CIFAR10(root='./data/test', train=False, download=True, transform=to_tensor)
 test_dl = DataLoader(test_dataset, batch_size=4, shuffle=True, num_workers=2)
 
-
-# adding the augmented data to the dataset
 print(len(train_dataset), len(test_dataset))
 
 # classification dictionary
-class_dict = {0:'plane', 1:'car', 2:'bird', 3:'cat', 4:'deer', 5:'dog',
-              6:'frog', 7:'horse', 8:'ship', 9:'truck'}
+class_dict = {0:'plane', 1:'car', 2:'bird', 3:'cat', 4:'deer',
+              5:'dog', 6:'frog', 7:'horse', 8:'ship', 9:'truck'}
 
 # visualize some pictures
 choice = input("See some examples? Y\\N\n")
 im_iter = iter(train_dl)
 while choice.lower() == "y":
     images, labels = im_iter.next()
-    images = images / 2 + 0.5
-    plt.imshow(utils.make_grid(images).permute(1, 2, 0))
+    plt.figure(figsize=(12, 12))
+    plt.imshow(utils.make_grid(images).permute(1, 2, 0) * rgb_std + rgb_mean)
     plt.show()
     choice = input("See some more examples? Y\\N\n")
 
@@ -134,8 +124,10 @@ def calculate_accuracy(dataloader):
             correct += (preds_set == y_set).sum().item()
     return correct / total * 100
 
-epochs = 0
+epochs = 10
 print("Trainning for {} epochs...".format(epochs))
+
+# memes
 if cuda:
     print("HahA GPU goes brrrrr")
 
@@ -161,14 +153,15 @@ for epoch in range(epochs):
     if not (epoch + 1) % 5:
         print("Epoch: {}  Loss: {:.5f}".format(epoch + 1, loss))
 
+# stats
 print('Done! Training time {:.2f}m'.format((time() - start_time) / 60))
-
 plt.figure("Learning Curve")
 plt.plot(losses)
 plt.show()
 
 model.eval()
-print("\nTest Accuracy: {:.2f}%".format(calculate_accuracy(test_dl)))
+print("\nTrain Accuracy: {:.2f}%".format(calculate_accuracy(train_dl)))
+print("Test Accuracy: {:.2f}%".format(calculate_accuracy(test_dl)))
 
 # testing model
 model.cpu()
@@ -176,10 +169,10 @@ choice = input("Make some predictions? Y\\N\n")
 im_iter = iter(test_dl)
 while choice.lower() == "y":
     images, labels = im_iter.next()
-    images = images / 2 + 0.5
     preds = torch.argmax(model(images), dim=1)
     print("Predictions:", ", ".join([class_dict[x.item()] for x in preds]))
     print("Labels:     ", ", ".join([class_dict[x.item()] for x in labels]))
-    plt.imshow(utils.make_grid(images).permute(1, 2, 0))
+    plt.figure(figsize=(12, 12))
+    plt.imshow(utils.make_grid(images).permute(1, 2, 0) * rgb_std + rgb_mean)
     plt.show()
     choice = input("See some more predictions? Y\\N\n")
