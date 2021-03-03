@@ -6,6 +6,8 @@ from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 from time import time
 
+params_path = "params.zip"
+
 # defining transformations
 rgb_mean = np.array([0.485, 0.456, 0.406])
 rgb_std = np.array([0.229, 0.224, 0.225])
@@ -40,8 +42,8 @@ class_dict = {0:'plane', 1:'car', 2:'bird', 3:'cat', 4:'deer',
               5:'dog', 6:'frog', 7:'horse', 8:'ship', 9:'truck'}
 
 # visualize some pictures
-choice = input("See some examples? Y\\N\n")
 im_iter = iter(train_dl)
+choice = input("See some examples? Y\\N\n")
 while choice.lower() == "y":
     images, labels = im_iter.next()
     plt.figure(figsize=(12, 12))
@@ -106,12 +108,6 @@ model = nn.Sequential(
 if cuda:
     model.cuda()
 
-# loss function
-criterion = nn.CrossEntropyLoss()
-
-# optimizer
-optim = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=0.6)
-
 # accuracy helper function
 def calculate_accuracy(dataloader):
     total = 0
@@ -126,44 +122,63 @@ def calculate_accuracy(dataloader):
             correct += (preds_set == y_set).sum().item()
     return correct / total * 100
 
-epochs = 100
-print("Training for {} epochs...".format(epochs))
+choice = input("Load parameters? Y\\N\n")
+if choice.lower() == "y":
+    print("Loading parameters from " + params_path + "...")
+    model.load_state_dict(torch.load(params_path))
+    print("Calculating accuracy...")
+    model.eval()
+    print("\nTest Accuracy: {:.2f}%".format(calculate_accuracy(test_dl)))
 
-# memes
-if cuda:
-    print("HahA GPU goes brrrrr")
+else:
+    # loss function
+    criterion = nn.CrossEntropyLoss()
 
-# training loop
-model.train()
-losses = []
-start_time = time()
-for epoch in range(epochs):
-    for X, y in train_dl:
-        if cuda:
-            X = X.cuda()
-            y = y.cuda()
+    # optimizer
+    optim = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=0.6)
 
-        preds = model(X)
-        loss = criterion(preds, y)
+    # memes
+    if cuda:
+        print("HahA GPU goes brrrrr")
 
-        optim.zero_grad()
-        loss.backward()
-        optim.step()
+    # training loop
+    epochs = 0
+    print("Training for {} epochs...".format(epochs))
+    model.train()
 
-        losses.append(loss)
+    losses = []
+    start_time = time()
+    for epoch in range(epochs):
+        for X, y in train_dl:
+            if cuda:
+                X = X.cuda()
+                y = y.cuda()
 
-    if not (epoch + 1) % 5:
-        print("Epoch: {}  Loss: {:.5f}".format(epoch + 1, loss))
+            preds = model(X)
+            loss = criterion(preds, y)
 
-# stats
-print('Done! Training time {:.2f}m'.format((time() - start_time) / 60))
-plt.figure("Learning Curve")
-plt.plot(losses)
-plt.show()
+            optim.zero_grad()
+            loss.backward()
+            optim.step()
 
-model.eval()
-print("\nTrain Accuracy: {:.2f}%".format(calculate_accuracy(train_dl)))
-print("Test Accuracy: {:.2f}%".format(calculate_accuracy(test_dl)))
+            losses.append(loss)
+
+        if not (epoch + 1) % 5:
+            print("Epoch: {}  Loss: {:.5f}".format(epoch + 1, loss))
+
+    # stats
+    print('Done! Training time {:.2f}m'.format((time() - start_time) / 60))
+    plt.figure("Learning Curve")
+    plt.plot(losses)
+    plt.show()
+
+    model.eval()
+    print("\nTrain Accuracy: {:.2f}%".format(calculate_accuracy(train_dl)))
+    print("Test Accuracy: {:.2f}%".format(calculate_accuracy(test_dl)))
+
+    choice = input("Save parameters? Y\\N\n")
+    if choice.lower() == 'y':
+        torch.save(model.state_dict(), params_path)
 
 # testing model
 model.cpu()
