@@ -17,14 +17,17 @@ to_tensor = transforms.Compose([
 # data augmentation
 augment = transforms.Compose([
     transforms.RandomHorizontalFlip(p=0.5),
-    transforms.ColorJitter(contrast=(0.8, 1.2), saturation=(0.9, 1.1)),
+    transforms.ColorJitter(contrast=(0.7, 1.4), saturation=(0.7, 1.4), brightness=(0.6, 1.4)),
+    transforms.RandomApply([
+    transforms.RandomAffine(20, scale=(1.2, 1.2))
+    ], p=0.2),
     to_tensor
 ])
 
 # loading data with torchvision
 print('Loading train set...')
 train_dataset = datasets.CIFAR10(root='./data/train', train=True, download=True, transform=augment)
-train_dl = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=3)
+train_dl = DataLoader(train_dataset, batch_size=128, shuffle=True, num_workers=3)
 
 print('Loading test set...')
 test_dataset = datasets.CIFAR10(root='./data/test', train=False, download=True, transform=to_tensor)
@@ -61,7 +64,7 @@ model = nn.Sequential(
     nn.BatchNorm2d(32),
 
     nn.MaxPool2d(kernel_size=2, stride=2),
-    nn.Dropout(p=0.2, inplace=True),
+    nn.Dropout(p=0.4, inplace=True),
     #######################################################
 
     #################### Second Convs #####################
@@ -74,7 +77,7 @@ model = nn.Sequential(
     nn.BatchNorm2d(64),
 
     nn.MaxPool2d(kernel_size=2, stride=2),
-    nn.Dropout(p=0.2, inplace=True),
+    nn.Dropout(p=0.4, inplace=True),
     #######################################################
 
     #################### Final Convs ######################
@@ -87,7 +90,7 @@ model = nn.Sequential(
     nn.BatchNorm2d(128),
 
     nn.MaxPool2d(kernel_size=2, stride=2),
-    nn.Dropout(p=0.2, inplace=True),
+    nn.Dropout(p=0.4, inplace=True),
     #######################################################
 
     #################### Dense Layers #####################
@@ -95,7 +98,6 @@ model = nn.Sequential(
 
     nn.Linear(4 * 4 * 128, 256),
     nn.ReLU(inplace=True),
-    nn.BatchNorm1d(256),
 
     nn.Linear(256, 10),
     #######################################################
@@ -108,7 +110,7 @@ if cuda:
 criterion = nn.CrossEntropyLoss()
 
 # optimizer
-optim = torch.optim.AdamW(model.parameters(), lr=1e-5, weight_decay=0.1)
+optim = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=0.6)
 
 # accuracy helper function
 def calculate_accuracy(dataloader):
@@ -124,8 +126,8 @@ def calculate_accuracy(dataloader):
             correct += (preds_set == y_set).sum().item()
     return correct / total * 100
 
-epochs = 10
-print("Trainning for {} epochs...".format(epochs))
+epochs = 100
+print("Training for {} epochs...".format(epochs))
 
 # memes
 if cuda:
@@ -172,7 +174,7 @@ while choice.lower() == "y":
     preds = torch.argmax(model(images), dim=1)
     print("Predictions:", ", ".join([class_dict[x.item()] for x in preds]))
     print("Labels:     ", ", ".join([class_dict[x.item()] for x in labels]))
-    plt.figure(figsize=(12, 12))
+    plt.figure(figsize=(10, 10))
     plt.imshow(utils.make_grid(images).permute(1, 2, 0) * rgb_std + rgb_mean)
     plt.show()
     choice = input("See some more predictions? Y\\N\n")
