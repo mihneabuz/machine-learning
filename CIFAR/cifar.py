@@ -19,10 +19,10 @@ to_tensor = transforms.Compose([
 # data augmentation
 augment = transforms.Compose([
     transforms.RandomHorizontalFlip(p=0.5),
-    transforms.ColorJitter(contrast=(0.7, 1.4), saturation=(0.7, 1.4), brightness=(0.6, 1.4)),
+    transforms.ColorJitter(contrast=(0.6, 1.5), saturation=(0.6, 1.5), brightness=(0.6, 1.5)),
     transforms.RandomApply([
-    transforms.RandomAffine(20, scale=(1.2, 1.2))
-    ], p=0.2),
+    transforms.RandomAffine(degrees=(10, 20), scale=(1.2, 1.2))
+    ], p=0.5),
     to_tensor
 ])
 
@@ -69,7 +69,7 @@ model = nn.Sequential(
     nn.Dropout(p=0.4, inplace=True),
     #######################################################
 
-    #################### Second Convs #####################
+    ###################  Second Convs  ####################
     nn.Conv2d(32, 64, kernel_size=5, stride=1, padding=2),
     nn.ReLU(inplace=True),
     nn.BatchNorm2d(64),
@@ -82,7 +82,7 @@ model = nn.Sequential(
     nn.Dropout(p=0.4, inplace=True),
     #######################################################
 
-    #################### Final Convs ######################
+    ###################  Final Convs  #####################
     nn.Conv2d(64, 128, kernel_size=5, stride=1, padding=2),
     nn.ReLU(inplace=True),
     nn.BatchNorm2d(128),
@@ -95,13 +95,13 @@ model = nn.Sequential(
     nn.Dropout(p=0.4, inplace=True),
     #######################################################
 
-    #################### Dense Layers #####################
+    ###################  Dense Layers  ####################
     nn.Flatten(),
 
     nn.Linear(4 * 4 * 128, 256),
     nn.ReLU(inplace=True),
 
-    nn.Linear(256, 10),
+    nn.Linear(256, 10)
     #######################################################
 )
 
@@ -130,19 +130,20 @@ if choice.lower() == "y":
     model.eval()
     print("\nTest Accuracy: {:.2f}%".format(calculate_accuracy(test_dl)))
 
-else:
+choice = input("Train Model? Y\\N\n")
+if choice.lower() == "y":
     # loss function
     criterion = nn.CrossEntropyLoss()
 
     # optimizer
-    optim = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=0.6)
+    optim = torch.optim.AdamW(model.parameters(), lr=1e-5, weight_decay=0.5)
 
     # memes
     if cuda:
         print("HahA GPU goes brrrrr")
 
     # training loop
-    epochs = 0
+    epochs = 30
     print("Training for {} epochs...".format(epochs))
     model.train()
 
